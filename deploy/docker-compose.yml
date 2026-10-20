@@ -1,0 +1,28 @@
+# Production compose for the droplet. Copied to /srv/apps/campaign-one/ by scripts/deploy.sh.
+# Postgres and Caddy are shared and live in /srv/db and /srv/proxy on the server.
+services:
+  api:
+    image: campaign-one-api:latest
+    container_name: campaign-one-api # Caddy routes to this name
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_OPTIONS: --max-old-space-size=192
+    mem_limit: 320m
+    networks: [web, db]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:4000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
