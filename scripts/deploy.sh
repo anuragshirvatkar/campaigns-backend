@@ -22,6 +22,7 @@ scp -q deploy/docker-compose.yml "$HOST:$APP_DIR/docker-compose.yml"
 echo "==> Migrating database and restarting"
 ssh "$HOST" "cd $APP_DIR \
   && docker compose run --rm api npx prisma migrate deploy \
+  && docker compose run --rm api node dist/scripts/create-admin.js \
   && docker compose up -d"
 
 echo "==> Removing old images on the server"

@@ -37,10 +37,9 @@ export const appConfig = {
     deadlineReminderHours: 72,
   },
 
-  // Demo lifecycle timers (there is no human reviewer or real ad platform).
+  // Demo lifecycle timers (review is done by the admin; there is no real ad platform).
   // DEMO_STEP_SEC in .env speeds them up, e.g. for recording a demo video.
   lifecycle: {
-    approvalDelaySec: env.REVIEW_DELAY_SEC, // submitted → approved & live
     distributionPrepDelaySec: env.DEMO_STEP_SEC, // funded/ended → distribution prep → promoting
     metricsTickSec: env.DEMO_STEP_SEC, // how often promotion numbers are reported
     promotionTicks: 6, // promotion spends the budget over this many ticks, then completes

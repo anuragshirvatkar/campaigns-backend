@@ -20,6 +20,8 @@ export const signupBody = z.object({
 export const loginBody = z.object({
   email,
   password: z.string().min(1, "Enter your password."),
+  // Which sign-in the person chose on the login screen; it must match the account
+  role: z.enum(["user", "admin"]).default("user"),
 });
 
 export const forgotPasswordBody = z.object({ email });

@@ -9,74 +9,90 @@ export type DemoDoc = {
 };
 
 export const DEMO_DOCS: Record<string, DemoDoc> = {
-  "pune-school-water-testing-2026": {
-    title: "Pune school drinking-water testing drive, spring 2026",
-    kind: "Report summary",
+  "austin-school-routes-heat-survey": {
+    title: "Shade on Austin's walking routes to school, summer 2026",
+    kind: "Survey summary",
     intro:
-      "Volunteers sampled drinking-water taps at thirty of Pune's oldest public schools between February and April 2026. Samples were analysed for lead by a certified laboratory.",
+      "Parent volunteers walked the twelve busiest routes to six elementary schools in August and September 2026, measuring shade cover and sidewalk temperatures at 3 pm.",
     sections: [
       {
         heading: "Results",
         rows: [
-          ["Schools tested", "30"],
-          ["Above the safe limit for lead", "11"],
-          ["Within the limit", "19"],
-          ["Taps sampled", "142"],
-          ["Highest reading", "3.1× the limit"],
+          ["Routes measured", "12"],
+          ["Average share of route in shade", "18%"],
+          ["Longest stretch with no shade", "0.6 miles"],
+          ["Hottest sidewalk reading", "131°F"],
+          ["Shaded sidewalk on the same day", "94°F"],
         ],
       },
       {
         heading: "What the results point to",
-        body: "All eleven schools above the limit draw water through service lines laid before 1985. Schools with replaced lines were all within the limit.",
+        body: "Routes lined with mature trees were up to 37°F cooler underfoot than open stretches on the same afternoon. The open stretches are mostly along wide arterial roads near school gates.",
       },
       {
         heading: "Recommendation",
-        body: "Replace the service lines at the eleven schools, and re-test after replacement. The state infrastructure fund covers the cost if each school applies before 31 March.",
+        body: "Plant shade trees along the six worst stretches first. The city's free street-tree program covers planting and the first two years of watering when neighbors request it.",
       },
     ],
   },
-  "apply-checklist": {
-    title: "How your school committee can apply for pipe replacement",
+  "tree-request-checklist": {
+    title: "How to request a free street tree on your block",
     kind: "Checklist",
-    intro: "The state infrastructure fund pays for replacing old water service lines in public schools. Each school must apply on its own, before 31 March.",
+    intro: "The city's street-tree program plants and waters trees for free along public sidewalks. Requests for the spring planting season close at the end of March.",
     sections: [
       {
-        heading: "What the committee needs",
+        heading: "What you need",
         list: [
-          "A resolution from the school committee asking for replacement",
-          "The school's water test results (the volunteer report is accepted)",
-          "A photo of the existing service line or meter, if available",
-          "Contact details of the headteacher and one committee member",
+          "The street address nearest the planting spot",
+          "A photo of the sidewalk strip where the tree would go",
+          "Agreement from the property owner next to the spot",
+          "One neighbor willing to check on the tree in its first summer",
         ],
       },
       {
         heading: "Steps",
         list: [
-          "Raise it at the next committee meeting and pass the resolution",
-          "Fill in the fund's one-page form at the ward office",
-          "Attach the test results and submit before 31 March",
-          "Keep the receipt number and share it with parents",
+          "Fill in the city's one-page request form online or at a library",
+          "Mention the school route so it is prioritized",
+          "Submit before March 31",
+          "Share your confirmation number with your school's parent group",
         ],
       },
     ],
   },
-  "open-air-data": {
-    title: "Open-data request: publish Delhi's neighbourhood air-sensor readings",
+  "columbus-lab-usage": {
+    title: "Weekend use of university teaching labs",
+    kind: "Dataset summary",
+    intro: "STEM Bridge volunteers compiled the public room-booking calendar for the university's undergraduate teaching labs over the spring 2026 semester.",
+    sections: [
+      {
+        heading: "Teaching labs by weekend use",
+        rows: [
+          ["Teaching labs listed", "64"],
+          ["Booked on a typical Saturday", "6"],
+          ["Unused on a typical Saturday", "58 (91%)"],
+          ["Public schools within 10 miles", "112"],
+          ["Schools with a working science lab", "41"],
+        ],
+      },
+      {
+        heading: "What this means",
+        body: "Most teaching labs sit empty on weekends while many nearby schools have no lab of their own. Supervised Saturday sessions would use space that already exists.",
+      },
+    ],
+  },
+  "open-labs-letter": {
+    title: "Open letter: open university labs to local school groups",
     kind: "Open letter",
-    intro:
-      "To the operators of air sensors in Delhi's schools, housing societies and research projects: please publish the readings you already collect, as an open hourly feed.",
+    intro: "To the university's leadership: please open teaching labs on Saturdays to public middle- and high-school groups, supervised by graduate student volunteers.",
     sections: [
       {
         heading: "What we're asking for",
         list: [
-          "Hourly PM2.5 and PM10 readings from sensors already installed",
-          "Sensor location to the nearest street, not the exact address",
-          "An open licence so anyone can build maps and alerts",
+          "Two Saturday sessions a month in at least four teaching labs",
+          "A simple online sign-up for teachers and school clubs",
+          "Graduate student volunteers paired with each group",
         ],
-      },
-      {
-        heading: "Why it matters",
-        body: "One city-wide number hides big differences between neighbourhoods. Street-level readings would let families decide when it's safe to be outdoors.",
       },
       {
         heading: "How to add your name",
@@ -84,166 +100,126 @@ export const DEMO_DOCS: Record<string, DemoDoc> = {
       },
     ],
   },
-  "delhi-sensor-inventory": {
-    title: "Delhi neighbourhood air-sensor inventory",
-    kind: "Dataset summary",
-    intro: "A count of low-cost air sensors known to be running in Delhi and the NCR, compiled by Clean Air Collective volunteers.",
-    sections: [
-      {
-        heading: "Sensors by operator",
-        rows: [
-          ["Schools", "126"],
-          ["Housing societies", "214"],
-          ["Research projects", "58"],
-          ["Total", "398"],
-          ["Publishing readings openly", "17"],
-        ],
-      },
-      {
-        heading: "Coverage",
-        body: "Sensors are spread across 41 wards. Most report every 5 to 15 minutes, which is enough for an hourly public feed without new hardware.",
-      },
-    ],
-  },
-  "adyar-traffic-count": {
-    title: "Adyar school-gate traffic count",
-    kind: "Survey summary",
-    intro: "Parents counted vehicles passing the primary school gate on five school days in July, during the morning and afternoon school runs.",
-    sections: [
-      {
-        heading: "Average per school run (30 minutes)",
-        rows: [
-          ["Two-wheelers", "612"],
-          ["Autos", "148"],
-          ["Cars", "203"],
-          ["Buses", "21"],
-          ["Children crossing", "~350"],
-        ],
-      },
-      {
-        heading: "Observations",
-        body: "There is no zebra crossing, signal or warden. Parents took turns stopping traffic so children could cross.",
-      },
-    ],
-  },
-  "mithi-river-survey": {
-    title: "Mithi river bank survey and clean-up log",
-    kind: "Volunteer log",
-    intro: "Volunteers cleared and weighed waste along a 3 km stretch of the Mithi river over twelve Sunday drives, and marked where it collected.",
-    sections: [
-      {
-        heading: "Twelve drives in numbers",
-        rows: [
-          ["Riverbank covered", "3 km"],
-          ["Waste cleared", "4.2 tonnes"],
-          ["Share that was plastic", "About 70%"],
-          ["Volunteers (total)", "620"],
-          ["Blockage hotspots mapped", "5"],
-        ],
-      },
-      {
-        heading: "Upcoming drives",
-        list: ["Kurla bridge: first Sunday of April", "Saki Naka: third Sunday of April", "Powai outlet: first Sunday of May", "Mahim creek mouth: third Sunday of May"],
-      },
-    ],
-  },
-  "bengaluru-library-survey": {
-    title: "Bengaluru branch-library usage survey",
-    kind: "Survey summary",
-    intro: "Volunteers asked residents near ten branch libraries when they would visit, and counted visitors at closing time over two weeks.",
-    sections: [
-      {
-        heading: "Results",
-        rows: [
-          ["Residents surveyed", "1,240"],
-          ["Could only visit after 6 pm", "7 in 10"],
-          ["Main reason", "Work or college hours"],
-          ["People turned away at closing, per branch per day", "~25"],
-        ],
-      },
-      {
-        heading: "Pilot proposal",
-        body: "Open ten branches until 9 pm for six months with one librarian and trained volunteers, and publish monthly visitor numbers. End the pilot if evening visits stay low.",
-      },
-    ],
-  },
-  "rti-help-desk-survey": {
-    title: "Open Gov Forum help-desk visitor survey",
-    kind: "Survey summary",
-    intro: "Visitors to our free weekend RTI help desks in five cities answered a short survey before getting help.",
-    sections: [
-      {
-        heading: "Who came to the desks",
-        rows: [
-          ["Visitors surveyed", "860"],
-          ["Had never filed an RTI", "6 in 10"],
-          ["Didn't know RTIs can be filed online", "7 in 10"],
-          ["Most common topic", "Pensions and scholarships"],
-        ],
-      },
-      {
-        heading: "How to file",
-        list: ["Go to the RTI Online portal", "Choose the ministry or department", "Write your question in plain words", "Pay the ₹10 fee online and keep the registration number"],
-      },
-    ],
-  },
-  "street-vending-licences": {
-    title: "Hyderabad street-vendor licence survey",
-    kind: "Survey summary",
-    intro: "Union volunteers spoke to vendors in eight markets across Hyderabad and Secunderabad about licences and evictions.",
-    sections: [
-      {
-        heading: "Results",
-        rows: [
-          ["Vendors surveyed", "520"],
-          ["No licence or certificate of vending", "Over half"],
-          ["Selling from the same spot for 5+ years", "6 in 10"],
-          ["Lost a working day to eviction in the last month", "4 in 10"],
-        ],
-      },
-      {
-        heading: "What vendors are asking for",
-        body: "Finish the city's vendor survey, publish the list of eligible vendors, and issue certificates of vending as the 2014 law requires.",
-      },
-    ],
-  },
-  "warli-schools-pilot": {
-    title: "Warli classes in Palghar schools: pilot summary",
+  "storefront-gallery-pilot": {
+    title: "Downtown storefront gallery pilot: results",
     kind: "Pilot summary",
-    intro: "Local Warli artists taught weekly painting classes in village schools in Palghar district, paid a fair fee per session.",
-    sections: [
-      {
-        heading: "The pilot",
-        rows: [
-          ["Schools taking part", "12"],
-          ["Artists teaching", "9"],
-          ["Children per week", "~480"],
-          ["Session length", "90 minutes"],
-        ],
-      },
-      {
-        heading: "What changed",
-        body: "Several schools now display students' Warli work at their gates, and three artists have taken on apprentices from the classes.",
-      },
-    ],
-  },
-  "kochi-grocers-survey": {
-    title: "Kochi Traders Association member survey",
-    kind: "Survey summary",
-    intro: "We asked member shops how they take payments and orders today, and what would help them keep customers.",
+    intro: "Main Street Arts Alliance worked with property owners to place rotating local art shows in empty downtown storefronts for six months.",
     sections: [
       {
         heading: "Results",
         rows: [
-          ["Shops surveyed", "214"],
-          ["Owner has a smartphone", "8 in 10"],
-          ["Take orders on the phone", "3 in 10"],
-          ["Accept UPI", "5 in 10"],
+          ["Empty storefronts at the start", "23"],
+          ["Storefronts turned into galleries", "9"],
+          ["Local artists shown", "54"],
+          ["Visitors counted", "11,400"],
+          ["Storefronts later leased to new tenants", "3"],
         ],
       },
       {
-        heading: "Workshop plan",
-        list: ["Set up UPI payments with a printed QR code", "Make a WhatsApp catalogue of best sellers", "Offer simple local delivery to regulars"],
+        heading: "How it works",
+        body: "Owners lend the space rent-free until a tenant signs. Artists cover their own shows, and the alliance handles insurance, cleaning and opening hours.",
+      },
+    ],
+  },
+  "phoenix-refill-map": {
+    title: "Public water bottle filling stations in central Phoenix",
+    kind: "Survey summary",
+    intro: "Refill Phoenix volunteers mapped every working public bottle filling station in the central city in June 2026.",
+    sections: [
+      {
+        heading: "What we found",
+        rows: [
+          ["Working stations found", "12"],
+          ["Stations out of order", "5"],
+          ["Bus stops within 1 block of a station", "4%"],
+          ["Parks with a working station", "3 of 19"],
+          ["Stations requested in the plan", "40"],
+        ],
+      },
+      {
+        heading: "Recommendation",
+        body: "Install 40 stations at busy bus stops, parks and libraries, starting with the areas that have none within a 10-minute walk.",
+      },
+    ],
+  },
+  "denver-library-computer-survey": {
+    title: "Library computer users: how much time do people need?",
+    kind: "Survey summary",
+    intro: "Library Access Coalition volunteers surveyed 420 people using public computers at eight branch libraries in September 2026.",
+    sections: [
+      {
+        heading: "Results",
+        rows: [
+          ["People surveyed", "420"],
+          ["Said one hour wasn't enough", "6 in 10"],
+          ["Were applying for a job or benefits", "47%"],
+          ["Had no computer at home", "58%"],
+          ["Waited for a free computer", "Average 25 minutes"],
+        ],
+      },
+      {
+        heading: "Recommendation",
+        body: "Raise the daily limit to two hours, and add more computers at the four busiest branches.",
+      },
+    ],
+  },
+  "portland-food-truck-permits": {
+    title: "Food truck permit applications: owner survey",
+    kind: "Survey summary",
+    intro: "The Rose City Food Truck Association surveyed 86 member owners about applying for and renewing their city permits.",
+    sections: [
+      {
+        heading: "Results",
+        rows: [
+          ["Owners surveyed", "86"],
+          ["Average office visits per permit", "3"],
+          ["Average days of lost sales per year", "4"],
+          ["Would apply online if they could", "94%"],
+        ],
+      },
+      {
+        heading: "Outcome",
+        body: "After the campaign, the city added an online permit form and a status tracker. Paper applications are still accepted.",
+      },
+    ],
+  },
+  "minneapolis-budget-survey": {
+    title: "Who takes part in the city budget? Resident survey",
+    kind: "Survey summary",
+    intro: "Volunteers surveyed 610 residents at bus stops, parks and libraries across Minneapolis in September 2026.",
+    sections: [
+      {
+        heading: "Results",
+        rows: [
+          ["Residents surveyed", "610"],
+          ["Have never attended a budget hearing", "8 in 10"],
+          ["Didn't know hearings were open to the public", "46%"],
+          ["Would suggest an idea online", "74%"],
+        ],
+      },
+      {
+        heading: "Recommendation",
+        body: "Open an online suggestion form for six weeks before each budget is drafted, publish every idea, and reply to the most popular ones.",
+      },
+    ],
+  },
+  "school-lunch-price-survey": {
+    title: "Where school lunch prices are published",
+    kind: "Survey summary",
+    intro: "Parent volunteers checked the websites of all 48 schools in the district for current lunch prices in August 2026.",
+    sections: [
+      {
+        heading: "Results",
+        rows: [
+          ["Schools checked", "48"],
+          ["Prices listed on the school website", "19"],
+          ["Prices only inside a PDF menu", "17"],
+          ["No price found online", "12"],
+        ],
+      },
+      {
+        heading: "Recommendation",
+        body: "Publish one district-wide page listing breakfast and lunch prices for every school, with a link to the free and reduced-price meal application.",
       },
     ],
   },

@@ -1,5 +1,5 @@
 import { unlink } from "node:fs/promises";
-import { cloudinary, cloudinaryFolder } from "../../lib/cloudinary.js";
+import { cloudinary, cloudinaryFolder, prebuildPreview } from "../../lib/cloudinary.js";
 import { AppError } from "../../utils/app-error.js";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, UPLOAD_RULES, uploadBody, VIDEO_TYPES } from "./uploads.schema.js";
 
@@ -29,6 +29,7 @@ export async function uploadFile(userId: string, body: unknown, file: UploadedFi
     const result = await cloudinary.uploader.upload(file.path, {
       folder: cloudinaryFolder(`${purpose}/${userId}`),
       resource_type: kind,
+      ...(kind === "image" ? prebuildPreview : {}),
     });
 
     const maxVideoSec = "maxVideoSec" in rules ? rules.maxVideoSec : Infinity;

@@ -95,6 +95,13 @@ enum NotificationType {
   @@map("notification_type")
 }
 
+enum UserRole {
+  user
+  admin
+
+  @@map("user_role")
+}
+
 enum FeedbackAnswer {
   no
   somewhat
@@ -115,15 +122,20 @@ enum ReportReason {
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  fullName     String   @map("full_name")
-  avatarUrl    String?  @map("avatar_url")
+  id                String   @id @default(uuid()) @db.Uuid
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  fullName          String   @map("full_name")
+  avatarUrl         String?  @map("avatar_url")
+  // "admin" reviews submitted campaigns; admins are only created by src/scripts/create-admin.ts
+  role              UserRole @default(user)
+  // Sam, the voice assistant: whether the first-run tour is done, and whether Sam is switched on
+  appIntroduced     Boolean  @default(false) @map("app_introduced")
+  assistantEnabled  Boolean  @default(true) @map("assistant_enabled")
   // { push: boolean, muted: category[] } — see notifications/preferences.ts; null = defaults
-  notificationPrefs Json? @map("notification_prefs")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  notificationPrefs Json?    @map("notification_prefs")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   campaigns      Campaign[]
   contributions  Contribution[]
@@ -195,6 +207,10 @@ model Campaign {
   cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(3)
   reviewedAt         DateTime? @map("reviewed_at") @db.Timestamptz(3)
   rejectedAt         DateTime? @map("rejected_at") @db.Timestamptz(3)
+
+  // Automated pre-screen of the latest submission, shown to the admin as a suggestion (never to the
+  // creator): { decision, summary, issues, reviewer, at }. Cleared on every (re)submission.
+  aiReview Json? @map("ai_review")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -378,17 +394,21 @@ enum ReviewDecision {
   @@map("review_decision")
 }
 
-/** Every review decision, kept as an audit trail (the latest one is shown to the creator). */
+/**
+ * Every review decision, kept as an audit trail (the latest one is shown to the creator).
+ */
 model CampaignReview {
-  id         String         @id @default(uuid()) @db.Uuid
-  campaignId String         @map("campaign_id") @db.Uuid
+  id         String          @id @default(uuid()) @db.Uuid
+  campaignId String          @map("campaign_id") @db.Uuid
   decision   ReviewDecision
   summary    String
   // [{ field, step, message }] — what to fix, pointing at the creation step
-  issues     Json           @default("[]")
-  // "ai" when the language model reviewed it, "rules" for the built-in fallback checks
+  issues     Json            @default("[]")
+  // "admin" for a decision by the platform admin; "ai" / "rules" for older automated decisions
   reviewer   String
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  // What the AI pre-screen suggested when the admin decided (null if it hadn't run), to measure agreement
+  aiDecision ReviewDecision? @map("ai_decision")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 

@@ -3,8 +3,8 @@
 // conditional updates, so a run after downtime simply catches up on anything overdue.
 import { appConfig } from "../config/app.config.js";
 import {
-  approveDueCampaigns,
   endExpiredFunding,
+  prescreenSubmitted,
   remindDeadlines,
   startDistributionPrep,
   startPromotion,
@@ -12,7 +12,7 @@ import {
 import { recordPromotionTicks } from "../modules/metrics/metrics.service.js";
 
 const JOBS: [name: string, run: (now: Date) => Promise<void>][] = [
-  ["approve submitted campaigns", approveDueCampaigns],
+  ["pre-screen submitted campaigns", prescreenSubmitted],
   ["end expired funding", endExpiredFunding],
   ["remind approaching deadlines", remindDeadlines],
   ["start distribution prep", startDistributionPrep],

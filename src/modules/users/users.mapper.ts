@@ -6,6 +6,9 @@ export function toPublicUser(user: User) {
     email: user.email,
     fullName: user.fullName,
     avatarUrl: user.avatarUrl,
+    role: user.role,
+    appIntroduced: user.appIntroduced,
+    assistantEnabled: user.assistantEnabled,
     createdAt: user.createdAt,
   };
 }

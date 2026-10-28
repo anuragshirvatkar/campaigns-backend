@@ -30,17 +30,22 @@ type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_u
 type Message = { role: "system" | "user"; content: string | ContentPart[] };
 
 /** Chat completion whose reply is forced to match a JSON schema. */
-export async function chatJson<T>(messages: Message[], schemaName: string, schema: object): Promise<T> {
-  const data = await call("/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: env.OPENAI_MODEL,
-      messages,
-      temperature: 0.4,
-      response_format: { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
-    }),
-  });
+export async function chatJson<T>(messages: Message[], schemaName: string, schema: object, opts: { timeoutMs?: number; maxTokens?: number; model?: string } = {}): Promise<T> {
+  const data = await call(
+    "/chat/completions",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: opts.model ?? env.OPENAI_MODEL,
+        messages,
+        temperature: 0.4,
+        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+        response_format: { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
+      }),
+    },
+    opts.timeoutMs,
+  );
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new OpenAiError("OpenAI returned no content.");
   return JSON.parse(content) as T;

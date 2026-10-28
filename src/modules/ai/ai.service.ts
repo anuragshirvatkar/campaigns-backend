@@ -3,7 +3,7 @@
 // Without an OpenAI key (or if OpenAI fails) every function answers in a labelled demo mode.
 import { extname } from "node:path";
 import { unlink } from "node:fs/promises";
-import { cloudinary, cloudinaryFolder } from "../../lib/cloudinary.js";
+import { cloudinary, cloudinaryFolder, prebuildPreview } from "../../lib/cloudinary.js";
 import { chatJson, generateImage as openAiImage, isOpenAiConfigured, transcribe as openAiTranscribe } from "../../lib/openai.js";
 import { AppError } from "../../utils/app-error.js";
 import { categoryEnum, creatorTypeEnum } from "../campaigns/campaigns.schema.js";
@@ -24,7 +24,7 @@ async function withFallback<T>(live: () => Promise<T>, demo: () => T): Promise<{
 // ─── Voice → text ─────────────────────────────────────────────────────────────
 
 const DEMO_TRANSCRIPT =
-  "I want to tell parents in Pune that eleven of our thirty public schools tested high for lead in drinking water last spring. " +
+  "I want to tell parents in Austin that eleven of our thirty public schools tested high for lead in drinking water last spring. " +
   "The state already has money to replace the old pipes, but districts have to apply before March and most haven't. " +
   "I want to reach parents and school board voters aged 28 to 55 so they ask their district to apply.";
 
@@ -310,6 +310,7 @@ export async function generateCampaignImage(userId: string, body: { prompt: stri
     folder: cloudinaryFolder(`generated/${userId}`),
     resource_type: "image",
     format: "jpg", // ~5x smaller than the PNG OpenAI returns
+    ...prebuildPreview,
   });
   return {
     url: result.secure_url,

@@ -30,3 +30,13 @@ export const aiImageLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? "anonymous",
   message: message("You've created a lot of images this hour. Please try again later, or upload one."),
 });
+
+// Sam: each turn is speech-to-text + a model call + speech; generous for a conversation, capped for cost
+export const assistantLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 150,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? "anonymous",
+  message: message("Sam needs a short break. Please try again in a little while."),
+});

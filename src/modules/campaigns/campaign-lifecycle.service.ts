@@ -1,13 +1,14 @@
 // Status changes that happen on their own: run by the scheduler (src/jobs) and by payments.
 // Every transition is a conditional update ("only if still in status X"), so running a job
 // twice, or a job racing a payment, can never move a campaign twice.
-import type { Campaign, CampaignStatus, Prisma } from "@prisma/client";
+import { Prisma, type Campaign, type CampaignStatus, type ReviewDecision } from "@prisma/client";
 import { appConfig } from "../../config/app.config.js";
 import { prisma } from "../../lib/prisma.js";
 import { formatUsd } from "../../utils/money.js";
 import { campaignAudience, notifyUsers } from "../notifications/notifications.service.js";
 import { getStatsFor } from "./campaign-stats.js";
-import { reviewCampaign } from "./campaign-review.service.js";
+import { AppError } from "../../utils/app-error.js";
+import { reviewCampaign, type ReviewResult } from "./campaign-review.service.js";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -33,50 +34,64 @@ async function transition(
 
 const name = (c: Pick<Campaign, "title">) => c.title ?? "Your campaign";
 
-// ─── Submitted → reviewed: approved & live, changes requested, or rejected ────
+// ─── Submitted → pre-screened (the admin makes the decision) ──────────────────
 
-// Campaigns being reviewed right now, so a slow review isn't started twice by overlapping ticks
-const reviewing = new Set<string>();
+// Campaigns being pre-screened right now, so a slow AI call isn't started twice by overlapping ticks
+const screening = new Set<string>();
 
-export async function approveDueCampaigns(now = new Date()) {
+/**
+ * Runs the automated content check on every new submission and stores it as a suggestion for the
+ * admin. It never changes the campaign's status: only the admin approves, rejects or asks for changes.
+ */
+export async function prescreenSubmitted() {
   const due = await prisma.campaign.findMany({
-    where: { status: "submitted", statusChangedAt: { lte: secondsAgo(now, lifecycle.approvalDelaySec) } },
+    where: { status: "submitted", aiReview: { equals: Prisma.DbNull } },
     take: BATCH,
   });
 
   for (const c of due) {
-    if (reviewing.has(c.id)) continue;
-    reviewing.add(c.id);
+    if (screening.has(c.id)) continue;
+    screening.add(c.id);
     try {
-      await reviewOne(c, now);
+      const result = await reviewCampaign(c);
+      if (result.decision === "rejected" && c.publishedAt) result.decision = "changes_requested";
+      // Only if the creator hasn't edited it meanwhile (an edit clears the pre-screen and restarts the clock)
+      await prisma.campaign.updateMany({
+        where: { id: c.id, status: "submitted", statusChangedAt: c.statusChangedAt },
+        data: { aiReview: { ...result, at: new Date().toISOString() } },
+      });
     } finally {
-      reviewing.delete(c.id);
+      screening.delete(c.id);
     }
   }
 }
 
-async function reviewOne(c: Campaign, now: Date) {
-  const result = await reviewCampaign(c);
+export type ReviewDecisionInput = Pick<ReviewResult, "decision" | "summary" | "issues"> & { reviewer: string };
+
+/**
+ * Applies a review decision to a submitted campaign: approved (goes live), changes requested
+ * (creator edits and resubmits) or rejected. Returns false if the campaign is no longer awaiting review.
+ */
+export async function applyReviewDecision(c: Campaign, result: ReviewDecisionInput, now = new Date()) {
   // A campaign that was already live (re-reviewed after an edit) is never rejected outright: its
   // backers' money is committed, so the creator is asked to fix it instead
-  if (result.decision === "rejected" && c.publishedAt) result.decision = "changes_requested";
-  const reviewedAt = new Date();
+  if (result.decision === "rejected" && c.publishedAt) {
+    throw new AppError(409, "CANNOT_REJECT_LIVE", "This campaign already has backers' money committed. Ask for changes instead.");
+  }
+
+  // Kept with the decision so analytics can show how often the admin agreed with the AI
+  const aiDecision = ((c.aiReview as { decision?: ReviewDecision } | null)?.decision ?? null) as ReviewDecision | null;
 
   if (result.decision !== "approved") {
     const rejected = result.decision === "rejected";
-    // Only if nothing changed meanwhile: a creator edit restarts the review clock
-    const { count } = await prisma.campaign.updateMany({
-      where: { id: c.id, status: "submitted", statusChangedAt: c.statusChangedAt },
-      data: {
-        status: result.decision,
-        reviewedAt,
-        statusChangedAt: reviewedAt,
-        ...(rejected ? { rejectedAt: reviewedAt } : {}),
-      },
+    const moved = await transition(c.id, "submitted", {
+      status: result.decision,
+      reviewedAt: now,
+      ...(rejected ? { rejectedAt: now } : {}),
     });
-    if (count === 0) return;
+    if (!moved) return false;
     await prisma.campaignReview.create({
-      data: { campaignId: c.id, decision: result.decision, summary: result.summary, issues: result.issues, reviewer: result.reviewer },
+      data: { campaignId: c.id, decision: result.decision, summary: result.summary, issues: result.issues, reviewer: result.reviewer, aiDecision },
     });
     await notifyUsers([c.creatorId], {
       type: rejected ? "campaign_rejected" : "campaign_changes_requested",
@@ -87,7 +102,7 @@ async function reviewOne(c: Campaign, now: Date) {
         : `${result.summary} Open the campaign to see what to fix, then resubmit.`,
       eventKey: `review:${c.id}:${c.submittedAt?.getTime() ?? 0}`,
     });
-    return;
+    return true;
   }
 
   const { raisedCents } = await getStatsFor(c.id);
@@ -96,15 +111,15 @@ async function reviewOne(c: Campaign, now: Date) {
 
   const moved = await transition(c.id, "submitted", {
     status: goalReached ? "funded" : "funding",
-    reviewedAt,
+    reviewedAt: now,
     approvedAt: now,
     publishedAt: c.publishedAt ?? now,
     fundingDeadline: c.fundingDeadline ?? new Date(now.getTime() + c.durationDays * 86_400_000),
     ...(goalReached && !c.fundedAt ? { fundedAt: now } : {}),
   });
-  if (!moved) return;
+  if (!moved) return false;
   await prisma.campaignReview.create({
-    data: { campaignId: c.id, decision: "approved", summary: result.summary, issues: [], reviewer: result.reviewer },
+    data: { campaignId: c.id, decision: "approved", summary: result.summary, issues: [], reviewer: result.reviewer, aiDecision },
   });
 
   await notifyUsers([c.creatorId], {
@@ -127,6 +142,7 @@ async function reviewOne(c: Campaign, now: Date) {
       eventKey: `live:${c.id}`,
     });
   }
+  return true;
 }
 
 // ─── Funding deadline passed → funding ended ──────────────────────────────────

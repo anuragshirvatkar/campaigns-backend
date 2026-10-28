@@ -18,9 +18,10 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx --env-file=.env src/scripts/seed.ts",
     "db:studio": "prisma studio",
+    "admin:create": "tsx --env-file=.env src/scripts/create-admin.ts",
     "deploy": "bash scripts/deploy.sh",
     "db:reset": "prisma migrate reset --force --skip-seed",
-    "test:e2e": "node tests/e2e.mjs http://localhost:4000/api prisma/seed-images/school-water-cover.png"
+    "test:e2e": "node tests/e2e.mjs http://localhost:4000/api prisma/seed-images/school-tree-cover.png"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

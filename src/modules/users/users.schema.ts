@@ -4,6 +4,9 @@ export const updateMeBody = z
   .object({
     fullName: z.string().trim().min(1).max(80),
     avatarUrl: z.url().nullable(),
+    // Sam: tour finished / assistant switched on or off
+    appIntroduced: z.boolean(),
+    assistantEnabled: z.boolean(),
   })
   .partial();
 

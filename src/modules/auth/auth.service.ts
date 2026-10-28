@@ -36,6 +36,13 @@ export async function login(input: LoginBody) {
   if (!user || !ok) {
     throw new AppError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
+  if (user.role !== input.role) {
+    throw new AppError(
+      403,
+      "WRONG_ROLE",
+      user.role === "admin" ? "This is the admin account. Choose Admin to sign in." : "This account isn't an admin. Choose User to sign in.",
+    );
+  }
   return { token: signToken(user.id), user: toPublicUser(user) };
 }
 
@@ -141,6 +148,9 @@ export async function google(input: GoogleBody) {
       if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
       user = await prisma.user.findUniqueOrThrow({ where: { email: profile.email } });
     }
+  } else if (user.role === "admin") {
+    // The admin signs in with email and password only
+    throw new AppError(403, "WRONG_ROLE", "The admin account can't use Google sign-in.");
   } else if (!user.avatarUrl && profile.picture) {
     user = await prisma.user.update({ where: { id: user.id }, data: { avatarUrl: profile.picture } });
   }

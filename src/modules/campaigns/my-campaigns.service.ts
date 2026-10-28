@@ -1,5 +1,5 @@
 // Creator side of campaigns: drafts, autosave, submit, edit, cancel.
-import type { Campaign, CampaignStatus, Prisma } from "@prisma/client";
+import { Prisma, type Campaign, type CampaignStatus } from "@prisma/client";
 import type { z } from "zod";
 import { appConfig } from "../../config/app.config.js";
 import { prisma } from "../../lib/prisma.js";
@@ -147,10 +147,12 @@ export async function updateMyCampaign(userId: string, id: string, body: UpdateC
       submittedAt: new Date(),
       statusChangedAt: new Date(),
       reachPerDollar: reachPerDollar(body.category ?? campaign.category),
+      aiReview: Prisma.DbNull,
     });
   } else if (contentChanged && campaign.status === "submitted") {
-    // Restart the review clock so the reviewed version is the latest one
+    // The admin must see the latest version: restart the clock and redo the pre-screen
     data.statusChangedAt = new Date();
+    data.aiReview = Prisma.DbNull;
   }
 
   const updated = await prisma.campaign.update({ where: { id }, data });
@@ -160,9 +162,10 @@ export async function updateMyCampaign(userId: string, id: string, body: UpdateC
       type: "submission_received",
       campaignId: id,
       title: `Your changes to ${updated.title} are under review`,
-      body: "The campaign will be live again once the changes are approved (about 20 seconds in this demo).",
+      body: "The campaign will be live again once the admin approves the changes.",
       eventKey: `resubmitted:${id}:${updated.submittedAt?.getTime()}`,
     });
+    await notifyAdmins(updated);
   }
   return ownerView(updated);
 }
@@ -199,6 +202,7 @@ export async function submitMyCampaign(userId: string, id: string) {
       slug: campaign.slug ?? makeSlug(campaign.title!),
       // Freeze the estimate model this campaign was submitted with
       reachPerDollar: reachPerDollar(campaign.category),
+      aiReview: Prisma.DbNull,
     },
   });
 
@@ -206,10 +210,26 @@ export async function submitMyCampaign(userId: string, id: string) {
     type: "submission_received",
     campaignId: id,
     title: `We received ${updated.title}`,
-    body: "Review usually takes about 20 seconds in this demo. You'll be notified of the decision.",
+    body: "The Campaigns team reviews every campaign before it goes live. You'll be notified of the decision.",
     eventKey: `submitted:${id}:${now.getTime()}`,
   });
+  await notifyAdmins(updated);
   return ownerView(updated);
+}
+
+/** Tells the admin a campaign joined the review queue. */
+async function notifyAdmins(c: Campaign) {
+  const admins = await prisma.user.findMany({ where: { role: "admin" }, select: { id: true } });
+  await notifyUsers(
+    admins.map((a) => a.id),
+    {
+      type: "submission_received",
+      campaignId: c.id,
+      title: "New campaign to review",
+      body: `${c.title} by ${c.creatorName ?? "a creator"} is waiting for your review.`,
+      eventKey: `admin-review:${c.id}:${c.submittedAt?.getTime() ?? 0}`,
+    },
+  );
 }
 
 type Issue = { field: string; step: number; message: string };

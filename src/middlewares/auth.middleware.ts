@@ -1,5 +1,6 @@
 import type { Request, RequestHandler } from "express";
 import { verifyToken } from "../lib/jwt.js";
+import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 
 function userIdFrom(req: Request) {
@@ -12,6 +13,17 @@ function userIdFrom(req: Request) {
 export const requireAuth: RequestHandler = (req, _res, next) => {
   const userId = userIdFrom(req);
   if (!userId) throw AppError.unauthorized();
+  req.userId = userId;
+  next();
+};
+
+/** requireAuth, plus the account must be the platform admin. */
+export const requireAdmin: RequestHandler = async (req, _res, next) => {
+  const userId = userIdFrom(req);
+  if (!userId) throw AppError.unauthorized();
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) throw AppError.unauthorized();
+  if (user.role !== "admin") throw AppError.forbidden("Only the admin can do this.");
   req.userId = userId;
   next();
 };

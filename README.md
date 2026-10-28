@@ -17,6 +17,7 @@ npm install
 npm run db:up               # Postgres in Docker on port 5433
 npm run db:migrate          # create tables
 npm run db:seed             # demo users + campaigns (add -- --reset to recreate)
+npm run admin:create        # the one admin account (humanity-admin@gmail.com)
 npm run dev                 # http://localhost:4000/api
 ```
 
@@ -26,9 +27,10 @@ npm run dev                 # http://localhost:4000/api
 | `npm run typecheck` | TypeScript check |
 | `npm run test:e2e` | End-to-end test of every flow (local DB, fast timers; see `tests/e2e.mjs`) |
 | `npm run db:studio` | Browse the database |
+| `npm run admin:create` | Create the admin (or re-mark it admin; `-- --reset-password` resets the password). Server: `docker compose run --rm api node dist/scripts/create-admin.js` |
 | `npm run deploy` | Build locally, ship to the droplet, migrate, restart, health-check |
 
-Speed up the demo lifecycle (review, distribution, ad delivery) with `DEMO_STEP_SEC=5` in `.env`.
+Speed up the demo lifecycle (distribution, ad delivery) with `DEMO_STEP_SEC=5` in `.env`.
 
 ## Structure
 
@@ -53,7 +55,8 @@ deploy/docker-compose.yml, scripts/deploy.sh, Dockerfile
 
 - **Money** is integer cents (USD). The 20% platform fee is inside the contribution ($25 → $20 ads + $5 fee); ~2.9% card processing is added on top.
 - **Funding totals are never stored**; they're computed from succeeded contributions.
-- **Lifecycle:** draft → submitted → (auto-approved after `DEMO_STEP_SEC`) funding → funded *or* funding_ended → distribution_prep → promoting → completed. Also `cancelled`. Keep-what-you-raise: a campaign that ends under goal still promotes with what it raised; there are no refunds.
+- **Lifecycle:** draft → submitted → (the admin approves) funding → funded *or* funding_ended → distribution_prep → promoting → completed. Also `cancelled`. Keep-what-you-raise: a campaign that ends under goal still promotes with what it raised; there are no refunds.
+- **Review** is done by the one admin (`role = admin`, created only by `src/scripts/create-admin.ts`, never by the API). Each submission is pre-screened automatically (AI, or built-in rules) and the result is shown to the admin as a suggestion only. The admin approves, asks for changes (creator edits and resubmits) or rejects. A campaign that was live before can't be rejected, only sent back for changes.
 - **Editing** is allowed in draft / submitted / approved / funding. Editing a live campaign sends it back through review (deadline unchanged). Locked once funded.
 - **Reach** is always an estimate range: `0.8 × 1000 / (CPM $16.34 × frequency 1.8) ≈ 27 people per $1`. Measured delivery (simulated ad platform) is reported separately.
 - **Notifications** go to the campaign owner + followers. Backing a campaign follows it. Each event is sent once per person (dedupe key).
@@ -67,7 +70,7 @@ Auth: `Authorization: Bearer <token>` (30-day JWT from signup/login). 🔒 = log
 | | | |
 |---|---|---|
 | POST | `/auth/signup` | `{ email, password (8+), fullName }` → `{ token, user }` |
-| POST | `/auth/login` | `{ email, password }` → `{ token, user }` |
+| POST | `/auth/login` | `{ email, password, role?: user|admin }` → `{ token, user }`; 403 `WRONG_ROLE` if the role doesn't match the account |
 | POST | `/contributions` | Signed in **or guest** (no token). `{ campaignId, amountCents, isPublic, idempotencyKey, guestEmail? }` → pending contribution; guests also get `guestToken`, sent back as `X-Guest-Token` on `/contributions/:id`, `/confirm`, `/cancel` |
 | POST | `/auth/google` | `{ idToken }` (Google ID token for the web client) → `{ token, user }`; signs in the account with that email or creates one |
 | POST | `/auth/forgot-password` | `{ email }` → always `{ message }`; emails a 6-digit code (15 min) via Resend if the account exists |
@@ -118,6 +121,23 @@ Logging out = delete the token on the device.
 | GET | `/contributions/:id` | Receipt |
 | GET | `/me/contributions` | Payment history |
 | GET | `/me/backed` | Backed campaigns with my total |
+
+### Admin (admin account only)
+| | | |
+|---|---|---|
+| GET | `/admin/campaigns` | `?tab=pending|changes_requested|approved|rejected` → `{ items, counts }`; items carry creator, `aiSuggestion`, `isResubmission` |
+| GET | `/admin/campaigns/:id` | Full campaign + creator, AI suggestion, review history, `canReject` |
+| POST | `/admin/campaigns/:id/review` | `{ decision: approved|changes_requested|rejected, note?, issues?: [{ step, message }] }` (note or issues required unless approving) |
+| GET | `/admin/analytics` | `?days=7|30|90` → KPIs vs previous period, all-time totals, review stats, daily series, categories, payments, delivery by channel, funnel, engagement, top campaigns |
+
+### Sam, the voice assistant 🔒
+| | | |
+|---|---|---|
+| POST | `/assistant/turn` | Voice: multipart `file` (m4a) + `context` (JSON string). Typed: `{ text, context }`. `context = { screen, editor?, history }`. → `{ transcript, reply, actions, audioUrl }`; actions: navigate, open_campaign, back_campaign, search, show_category, new_draft, draft_from_idea, fill_field, go_step, turn_off |
+| POST | `/assistant/speak` | `{ text }` → `{ audioUrl }` (intro tour lines) |
+| GET | `/assistant/audio/:id` | The MP3 clip (public, unguessable id, 10 min) |
+
+Voice: ElevenLabs when `ELEVEN_LABS_API_KEY` is set (`ELEVEN_LABS_VOICE_ID` picks the voice), otherwise OpenAI `tts-1` with `OPENAI_TTS_VOICE` (default ash). Users have `appIntroduced` (tour done) and `assistantEnabled`, both changeable via `PATCH /me`.
 
 ### Engage 🔒
 | | | |

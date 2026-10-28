@@ -2,6 +2,7 @@
 // against a LOCAL database only, with fast timers:
 //   terminal 1: DEMO_STEP_SEC=3 SCHEDULER_INTERVAL_SEC=1 npm run dev
 //   terminal 2: npm run test:e2e
+// Needs the seed (npm run db:seed -- --reset) and the admin (npm run admin:create).
 import { readFile } from "node:fs/promises";
 
 const BASE = process.argv[2] ?? "http://localhost:4000/api";
@@ -51,7 +52,7 @@ r = await api("GET", "/campaigns?q=zzzz-nothing");
 check("no results", r.status === 200 && r.json.items.length === 0);
 r = await api("GET", "/campaigns?category=bogus");
 check("invalid filter → 400", r.status === 400, r.json);
-r = await api("GET", "/campaigns/school-water");
+r = await api("GET", "/campaigns/school-shade-trees");
 check("detail by slug", r.status === 200 && r.json.story.blocks.length > 3 && r.json.sources.length === 2, r.json);
 check("detail funding 65%", r.json.funding.percentFunded === 65 && r.json.funding.backerCount === 6, r.json.funding);
 check("detail anonymous viewer null", r.json.viewer === null);
@@ -94,7 +95,23 @@ check("duplicate signup → 409", r.status === 409);
 r = await api("POST", "/auth/signup", { body: { email: `b-${email}`, password: "Test@12345", fullName: "Second Backer" } });
 const backer = r.json.token;
 
-console.log("Create → submit → auto-approve");
+console.log("Admin sign-in (admin created by npm run admin:create)");
+r = await api("POST", "/auth/login", { body: { email: "humanity-admin@gmail.com", password: "Humanity@123" } });
+check("admin can't sign in as a user", r.status === 403 && r.json.error.code === "WRONG_ROLE", r.json);
+r = await api("POST", "/auth/login", { body: { email: "humanity-admin@gmail.com", password: "Humanity@123", role: "admin" } });
+check("admin signs in with role admin", r.status === 200 && r.json.user.role === "admin", r.json);
+const admin = r.json.token;
+r = await api("POST", "/auth/login", { body: { email: "demo@campaignone.app", password: "Demo@1234", role: "admin" } });
+check("normal user can't sign in as admin", r.status === 403 && r.json.error.code === "WRONG_ROLE", r.json);
+r = await api("GET", "/admin/campaigns", { token: tc });
+check("admin API is admin-only", r.status === 403, r.json);
+r = await api("GET", "/admin/campaigns?tab=pending", { token: admin });
+check("review queue lists seeded pending campaigns with AI suggestions", r.status === 200 && r.json.items.filter((i) => i.isDemo && i.aiSuggestion).length === 3, r.json.counts);
+r = await api("GET", "/admin/analytics?days=30", { token: admin });
+check("analytics", r.status === 200 && r.json.daily.length === 30 && r.json.funnel.length === 4 && r.json.kpis.raisedCents >= 0 && r.json.delivery.impressions > 0, r.json.kpis);
+const approve = (id, body = { decision: "approved" }) => api("POST", `/admin/campaigns/${id}/review`, { token: admin, body });
+
+console.log("Create → submit → admin approves");
 r = await api("POST", "/me/campaigns", { token: tc, body: { creationMode: "manual" } });
 check("create draft", r.status === 201 && r.json.status === "draft" && r.json.creatorName === "Test Creator", r.json);
 const cid = r.json.id;
@@ -107,7 +124,7 @@ check("submit incomplete → 422 with step issues", r.status === 422 && r.json.e
 r = await api("PATCH", `/me/campaigns/${cid}`, { token: tc, body: {
   storyBlocks: [{ id: "b1", type: "paragraph", text: "Every monsoon the same potholes return on FC Road, and every year two-wheeler riders are hurt on them. Residents counted every pothole on the stretch and are asking the ward office to resurface it properly before the rains." }, { id: "b2", type: "stat", value: "42", label: "potholes counted", sourceId: "s1" }],
   sources: [{ id: "s1", title: "Ward survey", url: "https://example.org/survey" }],
-  reach: { locations: ["Pune"], channels: ["facebook"], interests: [], budgetSplit: {} },
+  reach: { locations: ["Austin"], channels: ["facebook"], interests: [], budgetSplit: {} },
   // Both images are required to submit
   coverImageUrl: "https://example.org/cover.jpg",
   adAssets: [{ id: "a1", type: "image", url: "https://example.org/ad.jpg", width: 1080, height: 1080 }],
@@ -120,10 +137,23 @@ r = await api("GET", `/campaigns/${cid}`);
 check("submitted campaign hidden from public", r.status === 404);
 r = await api("GET", `/campaigns/${cid}`, { token: tc });
 check("owner can preview own submitted campaign", r.status === 200);
-const live = await waitFor("auto-approved to funding", async () => {
-  const x = await api("GET", `/me/campaigns/${cid}`, { token: tc });
-  return x.json.status === "funding" ? x.json : null;
+await waitFor("AI pre-screen stored for the admin, status unchanged", async () => {
+  const x = await api("GET", `/admin/campaigns/${cid}`, { token: admin });
+  return x.json.aiSuggestion && x.json.status === "submitted";
 });
+r = await approve(cid, { decision: "rejected" });
+check("reject needs a reason", r.status === 400, r.json);
+r = await approve(cid, { decision: "changes_requested", note: "Add the ward office's reply.", issues: [{ step: 2, message: "Quote the ward office's reply." }] });
+check("admin asks for changes", r.status === 200 && r.json.status === "changes_requested" && r.json.reviews[0].reviewer === "admin", r.json.status);
+r = await api("GET", `/me/campaigns/${cid}`, { token: tc });
+check("creator sees the admin's note and issues", r.json.review.summary === "Add the ward office's reply." && r.json.review.issues[0].step === 2, r.json.review);
+r = await api("POST", `/me/campaigns/${cid}/submit`, { token: tc });
+check("creator resubmits", r.status === 200 && r.json.status === "submitted", r.json.status);
+r = await approve(cid);
+check("admin approves", r.status === 200 && r.json.status === "funding", r.json.status);
+r = await approve(cid);
+check("deciding twice → 409", r.status === 409, r.json);
+const live = (await api("GET", `/me/campaigns/${cid}`, { token: tc })).json;
 if (live) check("approval sets deadline + published", live.funding.deadline && live.timeline.find((s) => s.key === "approved").at);
 
 console.log("Back the campaign");
@@ -155,7 +185,10 @@ r = await api("PATCH", `/me/campaigns/${cid}`, { token: tc, body: { summary: "Po
 check("editing live campaign → submitted", r.status === 200 && r.json.status === "submitted", r.json.status);
 r = await api("POST", "/contributions", { token: backer, body: { campaignId: cid, amountCents: 5000, idempotencyKey: "e2e-key-3" } });
 check("no contributions while under review", r.status === 409 && r.json.error.code === "NOT_ACCEPTING_CONTRIBUTIONS", r.json);
-await waitFor("re-approved back to funding", async () => (await api("GET", `/me/campaigns/${cid}`, { token: tc })).json.status === "funding");
+r = await approve(cid, { decision: "rejected", note: "No." });
+check("a campaign that was live can't be rejected", r.status === 409 && r.json.error.code === "CANNOT_REJECT_LIVE", r.json);
+r = await approve(cid);
+check("admin re-approves the edit → funding", r.status === 200 && r.json.status === "funding", r.json.status);
 
 console.log("Fund → prep → promoting → completed");
 r = await api("POST", "/contributions", { token: backer, body: { campaignId: cid, amountCents: 4000, idempotencyKey: "e2e-key-4" } });
@@ -229,10 +262,10 @@ form.append("file", new Blob(["hello"], { type: "text/plain" }), "a.txt");
 r = await api("POST", "/uploads", { token: tc, form });
 check("wrong file type rejected", r.status === 400, r.json);
 
-r = await api("POST", "/ai/draft", { token: tc, body: { text: "I want people in Pune to know that the FC Road footpaths are blocked by parked bikes, so wheelchair users and parents with prams walk on the road. The traffic police can enforce it if enough residents complain." } });
+r = await api("POST", "/ai/draft", { token: tc, body: { text: "I want people in Austin to know that the Congress Avenue sidewalks are blocked by parked scooters, so wheelchair users and parents with strollers walk in the road. The city can enforce it if enough residents complain." } });
 check(`AI draft (${r.json?.mode})`, r.status === 200 && r.json.draft.title.length <= 60 && r.json.draft.storyBlocks.length > 0, r.json);
 console.log("    title:", r.json?.draft?.title, "| category:", r.json?.draft?.category);
-const firstImage = (await api("GET", "/campaigns/school-water")).json.ad.assets[0]?.url;
+const firstImage = (await api("GET", "/campaigns/school-shade-trees")).json.ad.assets[0]?.url;
 r = await api("POST", "/ai/creative-feedback", { token: tc, body: { imageUrl: firstImage, adHeadline: "11 schools. High lead. One deadline." } });
 check(`AI creative feedback (${r.json?.mode})`, r.status === 200 && r.json.suggestions.length > 0, r.json);
 
